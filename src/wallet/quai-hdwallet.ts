@@ -3,11 +3,11 @@ import { HDNodeWallet } from './hdnodewallet.js';
 import { QuaiTransactionRequest, Provider, TransactionResponse } from '../providers/index.js';
 import { resolveAddress } from '../address/index.js';
 import { AllowedCoinType } from '../constants/index.js';
+import { TypedDataDomain, TypedDataField } from '../hash/index.js';
 
 export class QuaiHDWallet extends AbstractHDWallet {
-
     protected static _version: number = 1;
-    
+
     protected static _coinType: AllowedCoinType = 994;
 
     private constructor(root: HDNodeWallet, provider?: Provider) {
@@ -31,8 +31,18 @@ export class QuaiHDWallet extends AbstractHDWallet {
         return await fromNodeConnected.sendTransaction(tx);
     }
 
-    public async signMessage(address: string, message: string | Uint8Array): Promise<string> { 
+    public async signMessage(address: string, message: string | Uint8Array): Promise<string> {
         const addrNode = this._getHDNodeForAddress(address);
         return await addrNode.signMessage(message);
+    }
+
+    public async signTypedData(
+        address: string,
+        domain: TypedDataDomain,
+        types: Record<string, Array<TypedDataField>>,
+        value: Record<string, unknown>,
+    ): Promise<string> {
+        const addrNode = this._getHDNodeForAddress(address);
+        return addrNode.signTypedData(domain, types, value);
     }
 }
