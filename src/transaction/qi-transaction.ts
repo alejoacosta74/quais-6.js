@@ -234,6 +234,7 @@ export class QiTransaction extends AbstractTransaction<string> implements QiTran
                 tx_outs: this.txOutputs.map((output) => ({
                     address: getBytes(output.address),
                     denomination: output.denomination,
+                    lock: new Uint8Array(0),
                 })),
             },
         };
@@ -241,7 +242,26 @@ export class QiTransaction extends AbstractTransaction<string> implements QiTran
         if (this.signature && includeSignature) {
             protoTx.signature = getBytes(this.signature);
         }
+        // Create a formatting function to convert Uint8Array to hexadecimal strings
+        const formatProtoTx = (obj: any): any => {
+            if (obj === null || typeof obj !== 'object') {
+                return obj;
+            }
+            if (obj instanceof Uint8Array) {
+                return '0x' + Buffer.from(obj).toString('hex');
+            }
+            if (Array.isArray(obj)) {
+                return obj.map(formatProtoTx);
+            }
+            const result: any = {};
+            for (const key in obj) {
+                result[key] = formatProtoTx(obj[key]);
+            }
+            return result;
+        };
 
+        // Use the formatting function when logging
+        console.log(`---> QiTransaction @ toProtobuf: protoTx: ${JSON.stringify(formatProtoTx(protoTx), null, 2)}`);
         return protoTx;
     }
 
