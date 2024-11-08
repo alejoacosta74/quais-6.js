@@ -957,11 +957,7 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
 
         if (addressInfo.derivationPath === 'BIP44:external' || addressInfo.derivationPath === 'BIP44:change') {
             // (BIP44 addresses)
-            const changeIndex = addressInfo.change ? 1 : 0;
-            const addressNode = this._root
-                .deriveChild(addressInfo.account + HARDENED_OFFSET)
-                .deriveChild(changeIndex)
-                .deriveChild(addressInfo.index);
+            const addressNode = this._getAddressNode(addressInfo.account, addressInfo.change, addressInfo.index);
             return addressNode.privateKey;
         } else {
             // (BIP47 addresses)
@@ -1671,11 +1667,7 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
         if (existingAddresses.some((info) => info.index === addressIndex)) {
             throw new Error(`Address index ${addressIndex} already exists in wallet under path ${derivationPath}`);
         }
-
-        const addressNode = this._root
-            .deriveChild(account + HARDENED_OFFSET)
-            .deriveChild(isChange ? 1 : 0)
-            .deriveChild(addressIndex);
+        const addressNode = this._getAddressNode(account, isChange, addressIndex);
         const zone = getZoneForAddress(addressNode.address);
         if (!zone) {
             throw new Error(`Failed to derive a Qi valid address zone for the index ${addressIndex}`);

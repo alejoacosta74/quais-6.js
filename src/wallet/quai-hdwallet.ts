@@ -3,7 +3,7 @@ import { HDNodeWallet } from './hdnodewallet.js';
 import { QuaiTransactionRequest, Provider, TransactionResponse } from '../providers/index.js';
 import { isQuaiAddress, resolveAddress } from '../address/index.js';
 import { AllowedCoinType, Zone } from '../constants/index.js';
-import { SerializedHDWallet, HARDENED_OFFSET } from './hdwallet.js';
+import { SerializedHDWallet } from './hdwallet.js';
 import { Mnemonic } from './mnemonic.js';
 import { TypedDataDomain, TypedDataField } from '../hash/index.js';
 import { getZoneForAddress } from '../utils/index.js';
@@ -205,11 +205,7 @@ export class QuaiHDWallet extends AbstractHDWallet<NeuteredAddressInfo> {
         });
 
         // derive the address node and validate the zone
-        const changeIndex = 0;
-        const addressNode = this._root
-            .deriveChild(account + HARDENED_OFFSET)
-            .deriveChild(changeIndex)
-            .deriveChild(addressIndex);
+        const addressNode = this._getAddressNode(account, false, addressIndex);
         const zone = getZoneForAddress(addressNode.address);
         if (!zone) {
             throw new Error(`Failed to derive a valid address zone for the index ${addressIndex}`);
@@ -358,11 +354,7 @@ export class QuaiHDWallet extends AbstractHDWallet<NeuteredAddressInfo> {
             throw new Error(`Address ${addr} is not known to this wallet`);
         }
 
-        const changeIndex = 0;
-        return this._root
-            .deriveChild(addressInfo.account + HARDENED_OFFSET)
-            .deriveChild(changeIndex)
-            .deriveChild(addressInfo.index);
+        return this._getAddressNode(addressInfo.account, false, addressInfo.index);
     }
 
     /**

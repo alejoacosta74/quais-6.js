@@ -106,6 +106,30 @@ export abstract class AbstractHDWallet<T extends NeuteredAddressInfo = NeuteredA
     }
 
     /**
+     * Gets the BIP44 change node for a given account and change flag.
+     *
+     * @param {number} account - The account number.
+     * @param {boolean} change - Whether to get the change node.
+     * @returns {HDNodeWallet} The change node.
+     */
+    protected _getChangeNode(account: number, change: boolean): HDNodeWallet {
+        const changeIndex = change ? 1 : 0;
+        return this._root.deriveChild(account + HARDENED_OFFSET).deriveChild(changeIndex);
+    }
+
+    /**
+     * Gets the BIP44 address node for a given account, change flag, and address index.
+     *
+     * @param {number} account - The account number.
+     * @param {boolean} change - Whether to get the change node.
+     * @param {number} addressIndex - The address index.
+     * @returns {HDNodeWallet} The address node.
+     */
+    protected _getAddressNode(account: number, change: boolean, addressIndex: number): HDNodeWallet {
+        return this._getChangeNode(account, change).deriveChild(addressIndex);
+    }
+
+    /**
      * Derives the next valid address node for a specified account, starting index, and zone. The method ensures the
      * derived address belongs to the correct shard and ledger, as defined by the Quai blockchain specifications.
      *
@@ -122,9 +146,7 @@ export abstract class AbstractHDWallet<T extends NeuteredAddressInfo = NeuteredA
         zone: Zone,
         isChange: boolean = false,
     ): HDNodeWallet {
-        const changeIndex = isChange ? 1 : 0;
-        const changeNode = this._root.deriveChild(account + HARDENED_OFFSET).deriveChild(changeIndex);
-
+        const changeNode = this._getChangeNode(account, isChange);
         let addrIndex = startingIndex;
         let addressNode: HDNodeWallet;
 
