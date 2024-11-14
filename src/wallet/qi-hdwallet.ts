@@ -608,7 +608,7 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
         const fewestCoinSelector = new FewestCoinSelector(unlockedUTXOs);
 
         const spendTarget: bigint = amount;
-        let selection = fewestCoinSelector.performSelection(spendTarget);
+        let selection = fewestCoinSelector.performSelection({ target: spendTarget, fee: BigInt(0) });
 
         // 3. Generate as many unused addresses as required to populate the spend outputs
         const sendAddresses = await getDestinationAddresses(selection.spendOutputs.length);
@@ -675,7 +675,7 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
             finalFee = await this.provider.estimateFeeForQi(feeEstimationTx);
 
             // Get new selection with updated fee
-            selection = fewestCoinSelector.performSelection(spendTarget, finalFee);
+            selection = fewestCoinSelector.performSelection({ target: spendTarget, fee: finalFee });
 
             // Determine if new addresses are needed for the change outputs
             const changeAddressesNeeded = selection.changeOutputs.length - changeAddresses.length;
