@@ -489,6 +489,88 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
         });
     }
 
+    /**
+     * Converts an amount of Qi to Quai and sends it to a specified Quai address.
+     *
+     * @param {string} destinationAddress - The Quai address to send the converted Quai to.
+     * @param {bigint} amount - The amount of Qi to convert to Quai.
+     * @returns {Promise<TransactionResponse>} A promise that resolves to the transaction response.
+     * @throws {Error} If the destination address is invalid, the amount is zero, or the conversion fails.
+     */
+    public async convertToQuai(destinationAddress: string, amount: bigint): Promise<TransactionResponse> {
+        const zone = getZoneForAddress(destinationAddress);
+        if (!zone) {
+            throw new Error(`Invalid zone for Quai address: ${destinationAddress}`);
+        }
+
+        if (isQiAddress(destinationAddress)) {
+            throw new Error(`Invalid Quai address: ${destinationAddress}`);
+        }
+
+        if (amount <= 0) {
+            throw new Error('Amount must be greater than 0');
+        }
+
+        const getDestinationAddresses = async (count: number): Promise<string[]> => {
+            return Array(count).fill(destinationAddress);
+        };
+
+        return this.prepareAndSendTransaction(amount, zone, getDestinationAddresses, 10);
+    }
+
+    /**
+     * Sends a transaction to a specified recipient payment code in a specified zone.
+     *
+     * @param {string} recipientPaymentCode - The payment code of the recipient.
+     * @param {bigint} amount - The amount of Qi to send.
+     * @param {Zone} originZone - The zone where the transaction originates.
+     * @param {Zone} destinationZone - The zone where the transaction is sent.
+     * @returns {Promise<TransactionResponse>} A promise that resolves to the transaction response.
+     * @throws {Error} If the payment code is invalid, the amount is zero, or the zones are invalid.
+     */
+    public async sendTransaction(
+        recipientPaymentCode: string,
+        amount: bigint,
+        originZone: Zone,
+        destinationZone: Zone,
+    ): Promise<TransactionResponse> {
+        if (!validatePaymentCode(recipientPaymentCode)) {
+            throw new Error('Invalid payment code');
+        }
+        if (amount <= 0) {
+            throw new Error('Amount must be greater than 0');
+        }
+        this.validateZone(originZone);
+        this.validateZone(destinationZone);
+
+        const getDestinationAddresses = async (count: number): Promise<string[]> => {
+            const addresses: string[] = [];
+            while (addresses.length < count) {
+                const address = this.getNextSendAddress(recipientPaymentCode, destinationZone).address;
+                const { isUsed } = await this.checkAddressUse(address);
+                if (!isUsed) {
+                    addresses.push(address);
+                }
+            }
+            return addresses;
+        };
+
+        return this.prepareAndSendTransaction(amount, originZone, getDestinationAddresses);
+    }
+
+    /**
+     * Prepares and sends a transaction with the specified parameters.
+     *
+     * @private
+     * @param {bigint} amount - The amount of Qi to send.
+     * @param {Zone} originZone - The zone where the transaction originates.
+     * @param {Function} getDestinationAddresses - A function that returns a promise resolving to an array of
+     *   destination addresses.
+     * @param {number} [minDenominationToUse] - Optional minimum denomination of Qi to use for the transaction.
+     * @returns {Promise<TransactionResponse>} A promise that resolves to the transaction response.
+     * @throws {Error} If provider is not set, insufficient balance, no available UTXOs, or insufficient spendable
+     *   balance.
+     */
     private async prepareAndSendTransaction(
         amount: bigint,
         originZone: Zone,
@@ -660,74 +742,16 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
     }
 
     /**
-     * Converts an amount of Qi to Quai and sends it to a specified Quai address.
+     * Prepares a transaction with the specified parameters.
      *
-     * @param {string} destinationAddress - The Quai address to send the converted Quai to.
-     * @param {bigint} amount - The amount of Qi to convert to Quai.
-     * @returns {Promise<TransactionResponse>} A promise that resolves to the transaction response.
-     * @throws {Error} If the destination address is invalid, the amount is zero, or the conversion fails.
+     * @private
+     * @param {SelectedCoinsResult} selection - The selected coins result.
+     * @param {string[]} inputPubKeys - The public keys of the inputs.
+     * @param {string[]} sendAddresses - The addresses to send to.
+     * @param {string[]} changeAddresses - The addresses to change to.
+     * @param {number} chainId - The chain ID.
+     * @returns {Promise<QiTransaction>} A promise that resolves to the prepared transaction.
      */
-    public async convertToQuai(destinationAddress: string, amount: bigint): Promise<TransactionResponse> {
-        const zone = getZoneForAddress(destinationAddress);
-        if (!zone) {
-            throw new Error(`Invalid zone for Quai address: ${destinationAddress}`);
-        }
-
-        if (isQiAddress(destinationAddress)) {
-            throw new Error(`Invalid Quai address: ${destinationAddress}`);
-        }
-
-        if (amount <= 0) {
-            throw new Error('Amount must be greater than 0');
-        }
-
-        const getDestinationAddresses = async (count: number): Promise<string[]> => {
-            return Array(count).fill(destinationAddress);
-        };
-
-        return this.prepareAndSendTransaction(amount, zone, getDestinationAddresses, 10);
-    }
-
-    /**
-     * Sends a transaction to a specified recipient payment code in a specified zone.
-     *
-     * @param {string} recipientPaymentCode - The payment code of the recipient.
-     * @param {bigint} amount - The amount of Qi to send.
-     * @param {Zone} originZone - The zone where the transaction originates.
-     * @param {Zone} destinationZone - The zone where the transaction is sent.
-     * @returns {Promise<TransactionResponse>} A promise that resolves to the transaction response.
-     * @throws {Error} If the payment code is invalid, the amount is zero, or the zones are invalid.
-     */
-    public async sendTransaction(
-        recipientPaymentCode: string,
-        amount: bigint,
-        originZone: Zone,
-        destinationZone: Zone,
-    ): Promise<TransactionResponse> {
-        if (!validatePaymentCode(recipientPaymentCode)) {
-            throw new Error('Invalid payment code');
-        }
-        if (amount <= 0) {
-            throw new Error('Amount must be greater than 0');
-        }
-        this.validateZone(originZone);
-        this.validateZone(destinationZone);
-
-        const getDestinationAddresses = async (count: number): Promise<string[]> => {
-            const addresses: string[] = [];
-            while (addresses.length < count) {
-                const address = this.getNextSendAddress(recipientPaymentCode, destinationZone).address;
-                const { isUsed } = await this.checkAddressUse(address);
-                if (!isUsed) {
-                    addresses.push(address);
-                }
-            }
-            return addresses;
-        };
-
-        return this.prepareAndSendTransaction(amount, originZone, getDestinationAddresses);
-    }
-
     private async prepareTransaction(
         selection: SelectedCoinsResult,
         inputPubKeys: string[],
@@ -761,6 +785,16 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
         return tx;
     }
 
+    /**
+     * Prepares a fee estimation transaction with the specified parameters.
+     *
+     * @private
+     * @param {SelectedCoinsResult} selection - The selected coins result.
+     * @param {string[]} inputPubKeys - The public keys of the inputs.
+     * @param {string[]} sendAddresses - The addresses to send to.
+     * @param {string[]} changeAddresses - The addresses to change to.
+     * @returns {QiPerformActionTransaction} The prepared transaction.
+     */
     private prepareFeeEstimationTransaction(
         selection: SelectedCoinsResult,
         inputPubKeys: string[],
