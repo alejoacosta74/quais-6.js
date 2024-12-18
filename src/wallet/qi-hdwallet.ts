@@ -1248,9 +1248,13 @@ export class QiHDWallet extends AbstractHDWallet<QiAddressInfo> {
         onOutpointsDeleted?: OutpointsCallback,
     ): Promise<void> {
         if (!this.provider) throw new Error('Provider not set');
-
+        console.log(`---> _scan()  => zone: ${zone}, account: ${account}`);
         const derivationPaths: DerivationPath[] = ['BIP44:external', 'BIP44:change', ...this.openChannels];
+        console.log(`---> _scan()  => derivationPaths: ${derivationPaths}`);
+        console.log(`---> _scan()  => provider: ${this.provider}`);
+        console.log(`---> _scan()  => toShard(zone): ${toShard(zone)}`);
         const currentBlock = (await this.provider!.getBlock(toShard(zone), 'latest')) as Block;
+        console.log(`---> _scan()  => currentBlock: ${currentBlock}`);
         for (const path of derivationPaths) {
             await this._scanDerivationPath(
                 path,
